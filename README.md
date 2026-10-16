@@ -20,7 +20,7 @@ On Linux with Python 3 and `dpkg-deb`:
 ./build.sh
 ```
 
-The DEB is written to `dist/`. Tagged versions are built and published by the release workflow.
+The DEB is written to `dist/`. The release workflow publishes each new package version from main.
 
 Static checks passed; successful importing on a device has not yet been confirmed.
 

@@ -1,0 +1,35 @@
+name: Build and release
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'package/**'
+      - 'build.sh'
+      - '.github/workflows/release.yml'
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check release version
+        run: |
+          version=$(sed -n 's/^Version: //p' package/DEBIAN/control)
+          echo "RELEASE_TAG=v$version" >> "$GITHUB_ENV"
+      - name: Build DEB
+        run: ./build.sh
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > /tmp/release-notes.md <<'NOTES'
+          Fixes the rootless loader path behind the AudioRecorder XS 5.0-62 import share-action crash.
+
+          Install the DEB alongside AudioRecorder, allow installation of ldid/coreutils if requested, then respring and retry importing. Uninstalling restores the original extension.
+
+          Static checks passed; on-device importing has not yet been confirmed.
+          NOTES
+          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" dist/*.deb --target "$GITHUB_SHA" --title "AudioRecorder Import Fix $RELEASE_TAG" --notes-file /tmp/release-notes.md
+          fi

@@ -1,0 +1,10 @@
+Package: uk.551.audiorecorder-import-fix
+Name: AudioRecorder Import Fix
+Version: 1.0.0
+Architecture: iphoneos-arm64
+Maintainer: 551UK
+Section: Tweaks
+Depends: net.limneos.audiorecorderxs-rootless (= 5.0-62), ldid, coreutils
+Description: Repairs the rootless handler path in AudioRecorder's import extension.
+ Corrects the action extension loader path, signs with existing entitlements,
+ and restores the original executable on removal. For AudioRecorder XS 5.0-62.

@@ -1,0 +1,37 @@
+#!/bin/sh
+set -eu
+PATH=/var/jb/usr/bin:/var/jb/bin:/usr/bin:/bin:/usr/sbin:/sbin
+export PATH
+[ "${1:-}" = configure ] || exit 0
+target=/var/jb/Applications/AudioRecorder.app/PlugIns/action.appex/action
+state=/var/jb/var/lib/audiorecorder-import-fix
+payload=/var/jb/usr/share/audiorecorder-import-fix
+expected=b390901b36c30bfe9cfde4ea08b29309a009e7a83a64e74a5bdbb12e2337071d
+hash() { sha256sum "$1" | cut -d ' ' -f 1; }
+[ -f "$target" ] || { echo 'AudioRecorder import extension is missing.' >&2; exit 1; }
+current=$(hash "$target")
+if [ -f "$state/applied.sha256" ] && [ "$current" = "$(cat "$state/applied.sha256")" ]; then
+    echo 'AudioRecorder import repair already applied.'
+    exit 0
+fi
+[ "$current" = "$expected" ] || { echo 'Extension differs from the supplied 5.0-62 build; no changes made.' >&2; exit 1; }
+command -v ldid >/dev/null || { echo 'ldid must be installed.' >&2; exit 1; }
+mkdir -p "$state"
+chmod 700 "$state"
+cp -p "$target" "$state/original"
+work="$target.551-import-new"
+trap 'rm -f "$work"' EXIT HUP INT TERM
+cp -p "$target" "$work"
+ldid -e "$target" > "$state/entitlements.plist"
+[ -s "$state/entitlements.plist" ] || { echo 'Could not extract original entitlements.' >&2; exit 1; }
+dd if="$payload/loader-path.bin" of="$work" bs=1 seek=31988 conv=notrunc 2>/dev/null
+ldid -S"$state/entitlements.plist" "$work"
+ldid -e "$work" > "$state/signed-entitlements.plist"
+[ "$(hash "$state/entitlements.plist")" = "$(hash "$state/signed-entitlements.plist")" ] || { echo 'Entitlement verification failed; original retained.' >&2; exit 1; }
+chmod 755 "$work"
+hash "$work" > "$state/applied.sha256"
+mv -f "$work" "$target"
+if command -v uicache >/dev/null; then
+    uicache -p /var/jb/Applications/AudioRecorder.app || echo 'Please refresh the app cache manually.'
+fi
+echo 'AudioRecorder import path repaired. Respring before testing an import.'

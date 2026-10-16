@@ -1,0 +1,19 @@
+#!/bin/sh
+set -eu
+PATH=/var/jb/usr/bin:/var/jb/bin:/usr/bin:/bin:/usr/sbin:/sbin
+export PATH
+case "${1:-}" in remove|deconfigure) ;; *) exit 0 ;; esac
+target=/var/jb/Applications/AudioRecorder.app/PlugIns/action.appex/action
+state=/var/jb/var/lib/audiorecorder-import-fix
+hash() { sha256sum "$1" | cut -d ' ' -f 1; }
+if [ -f "$state/original" ] && [ -f "$state/applied.sha256" ] && [ -f "$target" ]; then
+    if [ "$(hash "$target")" = "$(cat "$state/applied.sha256")" ]; then
+        [ "$(hash "$state/original")" = b390901b36c30bfe9cfde4ea08b29309a009e7a83a64e74a5bdbb12e2337071d ] || exit 1
+        cp -p "$state/original" "$target.551-import-restore"
+        mv -f "$target.551-import-restore" "$target"
+        if command -v uicache >/dev/null; then uicache -p /var/jb/Applications/AudioRecorder.app || true; fi
+        echo 'Original AudioRecorder import extension restored. Respring to reload it.'
+    else
+        echo 'AudioRecorder executable changed since repair; leaving the newer file untouched.'
+    fi
+fi

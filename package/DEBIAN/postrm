@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+case "${1:-}" in remove|purge)
+    rm -rf /var/jb/var/lib/audiorecorder-import-fix
+    ;;
+esac
